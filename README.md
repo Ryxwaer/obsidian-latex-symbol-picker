@@ -7,10 +7,12 @@ cursor is not already inside a math context.
 It works **fully offline**: the classifier and its training data ship with the
 plugin. Only symbols that Obsidian's MathJax can render are included.
 
+![Demo: drawing a symbol and inserting it into a note](assets/showcase.gif)
+
 ## Usage
 
-- Open the panel from the ribbon (pencil icon) or the command
-  "Open Detexify panel".
+- Open the panel from the ribbon (sigma icon) or the command
+  "LaTeX Symbol Picker: Open panel".
 - Draw a symbol on the canvas, or type part of a command in the search box.
 - Click a result to insert it at the cursor in the active note.
 
