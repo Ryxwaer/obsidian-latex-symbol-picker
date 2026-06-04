@@ -60,10 +60,10 @@ export default class DetexifyPlugin extends Plugin {
 		const active = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (active) this.lastActiveMarkdownView = active;
 
-		this.addRibbonIcon("sigma", "Open LaTeX Symbol Picker", () => this.activateView());
+		this.addRibbonIcon("sigma", "Open LaTeX symbol picker", () => this.activateView());
 		this.addCommand({
-			id: "open-detexify-panel",
-			name: "Open LaTeX Symbol Picker",
+			id: "open-panel",
+			name: "Open panel",
 			callback: () => this.activateView(),
 		});
 
@@ -73,7 +73,8 @@ export default class DetexifyPlugin extends Plugin {
 	onunload() {}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const stored = (await this.loadData()) as Partial<DetexifySettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, stored ?? {});
 	}
 
 	async saveSettings() {
@@ -138,7 +139,7 @@ export default class DetexifyPlugin extends Plugin {
 			this.lastActiveMarkdownView ??
 			this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!view) {
-			new Notice("LaTeX Symbol Picker: open a note to insert a symbol.");
+			new Notice("Open a note before inserting a symbol.");
 			return;
 		}
 
@@ -192,7 +193,7 @@ class DetexifyView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "LaTeX Symbol Picker";
+		return "LaTeX symbol picker";
 	}
 
 	getIcon(): string {
@@ -226,9 +227,8 @@ class DetexifyView extends ItemView {
 		this.resultsEl = root.createDiv({ cls: "detexify-results" });
 
 		this.registerDomEvent(this.resultsEl, "mousedown", (event) => {
-			const button = (event.target as HTMLElement).closest(
-				".detexify-result"
-			) as HTMLElement | null;
+			const target = event.target as HTMLElement | null;
+			const button = target?.closest<HTMLElement>(".detexify-result");
 			if (!button) return;
 			event.preventDefault();
 			event.stopPropagation();

@@ -405,10 +405,10 @@ var DetexifyPlugin = class extends import_obsidian2.Plugin {
     );
     const active = this.app.workspace.getActiveViewOfType(import_obsidian2.MarkdownView);
     if (active) this.lastActiveMarkdownView = active;
-    this.addRibbonIcon("sigma", "Open LaTeX Symbol Picker", () => this.activateView());
+    this.addRibbonIcon("sigma", "Open LaTeX symbol picker", () => this.activateView());
     this.addCommand({
-      id: "open-detexify-panel",
-      name: "Open LaTeX Symbol Picker",
+      id: "open-panel",
+      name: "Open panel",
       callback: () => this.activateView()
     });
     this.addSettingTab(new DetexifySettingTab(this.app, this));
@@ -416,7 +416,8 @@ var DetexifyPlugin = class extends import_obsidian2.Plugin {
   onunload() {
   }
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const stored = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, stored != null ? stored : {});
   }
   async saveSettings() {
     await this.saveData(this.settings);
@@ -471,7 +472,7 @@ var DetexifyPlugin = class extends import_obsidian2.Plugin {
     var _a;
     const view = (_a = this.lastActiveMarkdownView) != null ? _a : this.app.workspace.getActiveViewOfType(import_obsidian2.MarkdownView);
     if (!view) {
-      new import_obsidian2.Notice("LaTeX Symbol Picker: open a note to insert a symbol.");
+      new import_obsidian2.Notice("Open a note before inserting a symbol.");
       return;
     }
     const editor = view.editor;
@@ -507,7 +508,7 @@ var DetexifyView = class extends import_obsidian2.ItemView {
     return VIEW_TYPE;
   }
   getDisplayText() {
-    return "LaTeX Symbol Picker";
+    return "LaTeX symbol picker";
   }
   getIcon() {
     return "sigma";
@@ -534,9 +535,8 @@ var DetexifyView = class extends import_obsidian2.ItemView {
     this.statusEl = root.createDiv({ cls: "detexify-status" });
     this.resultsEl = root.createDiv({ cls: "detexify-results" });
     this.registerDomEvent(this.resultsEl, "mousedown", (event) => {
-      const button = event.target.closest(
-        ".detexify-result"
-      );
+      const target = event.target;
+      const button = target == null ? void 0 : target.closest(".detexify-result");
       if (!button) return;
       event.preventDefault();
       event.stopPropagation();

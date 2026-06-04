@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "build:data": "node scripts/build-data.cjs"
+    "build:data": "node scripts/build-data.cjs",
+    "lint": "eslint \"src/**/*.ts\""
   },
   "keywords": [
     "obsidian",
@@ -18,8 +19,11 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@typescript-eslint/parser": "^8.60.1",
     "builtin-modules": "^3.3.0",
     "esbuild": "^0.21.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-obsidianmd": "^0.3.0",
     "mathjax-full": "^3.2.1",
     "obsidian": "latest",
     "typescript": "^5.4.0"
