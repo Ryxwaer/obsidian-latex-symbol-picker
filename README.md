@@ -39,4 +39,5 @@ npm run build:data   # requires network + the mathjax-full dev dependency
 This plugin is MIT licensed. It is built on the MIT-licensed
 [Detexify](https://github.com/kirel/detexify) project by Daniel Kirsch: the
 classifier in `src/classifier.ts` is a TypeScript port, and the bundled data is
-derived from the Detexify data set. See [`LICENSE`](LICENSE) for full notices.
+derived from the Detexify data set. See [`LICENSE`](LICENSE) for the license and
+[`NOTICE`](NOTICE) for third-party attribution.

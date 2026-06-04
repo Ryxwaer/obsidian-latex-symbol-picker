@@ -108,8 +108,7 @@
 }
 
 /* Keep oversized symbols clipped inside the tile instead of spilling out. */
-.detexify-result-preview .MathJax,
-.detexify-result-preview mjx-container {
+.detexify-result-preview .MathJax {
 	max-width: 100%;
 	overflow: hidden;
 }
