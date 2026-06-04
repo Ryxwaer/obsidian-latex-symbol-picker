@@ -1,0 +1,125 @@
+.detexify-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 10px;
+	height: 100%;
+	overflow-y: auto;
+}
+
+.detexify-search-row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
+.detexify-search-input {
+	flex: 1;
+	min-width: 0;
+}
+
+.detexify-clear-btn {
+	flex: 0 0 auto;
+	cursor: pointer;
+}
+
+.detexify-canvas-wrap {
+	position: relative;
+	width: 100%;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary-alt);
+	overflow: hidden;
+	user-select: none;
+	-webkit-user-select: none;
+	/* Color used by the canvas drawing context. */
+	--detexify-ink: var(--text-normal);
+}
+
+.detexify-canvas {
+	display: block;
+	width: 100%;
+	height: 190px;
+	touch-action: none;
+	cursor: crosshair;
+	user-select: none;
+	-webkit-user-select: none;
+	outline: none;
+}
+
+.detexify-status {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	min-height: 1.2em;
+}
+
+.detexify-results {
+	flex: 1;
+}
+
+.detexify-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+	gap: 6px;
+	align-items: start;
+}
+
+.detexify-result {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 6px;
+	padding: 8px 6px;
+	min-height: 72px;
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+	transition: background-color 0.1s ease, border-color 0.1s ease;
+	overflow: hidden;
+}
+
+.detexify-result:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.detexify-result-preview {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 30px;
+	font-size: 1.3em;
+	line-height: 1;
+	color: var(--text-normal);
+	width: 100%;
+	max-width: 100%;
+	overflow: hidden;
+}
+
+/* Hide the preview slot entirely when nothing rendered into it. */
+.detexify-result-preview:empty {
+	display: none;
+}
+
+.detexify-result-preview .math {
+	display: inline-block;
+}
+
+/* Keep oversized symbols clipped inside the tile instead of spilling out. */
+.detexify-result-preview .MathJax,
+.detexify-result-preview mjx-container {
+	max-width: 100%;
+	overflow: hidden;
+}
+
+.detexify-result-code {
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	text-align: center;
+	line-height: 1.25;
+	width: 100%;
+	word-break: break-all;
+}

@@ -1,0 +1,27 @@
+{
+  "name": "detexify-panel",
+  "version": "1.0.0",
+  "description": "Detexify side panel for Obsidian: draw or search a LaTeX symbol and insert it at the cursor.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "build:data": "node scripts/build-data.cjs"
+  },
+  "keywords": [
+    "obsidian",
+    "latex",
+    "detexify",
+    "math"
+  ],
+  "author": "ryxwaer",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.0",
+    "mathjax-full": "^3.2.1",
+    "obsidian": "latest",
+    "typescript": "^5.4.0"
+  }
+}
