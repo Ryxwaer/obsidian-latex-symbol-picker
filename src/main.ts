@@ -14,14 +14,14 @@ import { DetexifyClassifier, Stroke, SymbolMeta } from "./classifier";
 import { ClassifierData, DataStore } from "./data";
 import { isInsideMath } from "./mathContext";
 
-const VIEW_TYPE = "detexify-panel-view";
+const VIEW_TYPE = "latex-symbol-picker-view";
 const DEFAULT_STATUS = "Draw a symbol or search above.";
 
-interface DetexifySettings {
+interface LatexSymbolPickerSettings {
 	resultLimit: number;
 }
 
-const DEFAULT_SETTINGS: DetexifySettings = {
+const DEFAULT_SETTINGS: LatexSymbolPickerSettings = {
 	resultLimit: 12,
 };
 
@@ -34,8 +34,8 @@ function toResult(meta: SymbolMeta): DisplayResult {
 	return { command: meta.command, packageName: meta.package };
 }
 
-export default class DetexifyPlugin extends Plugin {
-	settings: DetexifySettings = DEFAULT_SETTINGS;
+export default class LatexSymbolPickerPlugin extends Plugin {
+	settings: LatexSymbolPickerSettings = DEFAULT_SETTINGS;
 	dataStore!: DataStore;
 	classifier: DetexifyClassifier | null = null;
 	data: ClassifierData | null = null;
@@ -47,7 +47,7 @@ export default class DetexifyPlugin extends Plugin {
 		await this.loadSettings();
 		this.dataStore = new DataStore(this.app, this.manifest.dir ?? "");
 
-		this.registerView(VIEW_TYPE, (leaf) => new DetexifyView(leaf, this));
+		this.registerView(VIEW_TYPE, (leaf) => new LatexSymbolPickerView(leaf, this));
 
 		this.registerEvent(
 			this.app.workspace.on("active-leaf-change", (leaf) => {
@@ -67,13 +67,13 @@ export default class DetexifyPlugin extends Plugin {
 			callback: () => this.activateView(),
 		});
 
-		this.addSettingTab(new DetexifySettingTab(this.app, this));
+		this.addSettingTab(new LatexSymbolPickerSettingTab(this.app, this));
 	}
 
 	onunload() {}
 
 	async loadSettings() {
-		const stored = (await this.loadData()) as Partial<DetexifySettings> | null;
+		const stored = (await this.loadData()) as Partial<LatexSymbolPickerSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, stored ?? {});
 	}
 
@@ -165,8 +165,8 @@ export default class DetexifyPlugin extends Plugin {
 	}
 }
 
-class DetexifyView extends ItemView {
-	private readonly plugin: DetexifyPlugin;
+class LatexSymbolPickerView extends ItemView {
+	private readonly plugin: LatexSymbolPickerPlugin;
 
 	private canvas!: HTMLCanvasElement;
 	private ctx!: CanvasRenderingContext2D;
@@ -183,7 +183,7 @@ class DetexifyView extends ItemView {
 	private resizeObserver: ResizeObserver | null = null;
 	private renderToken = 0;
 
-	constructor(leaf: WorkspaceLeaf, plugin: DetexifyPlugin) {
+	constructor(leaf: WorkspaceLeaf, plugin: LatexSymbolPickerPlugin) {
 		super(leaf);
 		this.plugin = plugin;
 	}
@@ -203,32 +203,32 @@ class DetexifyView extends ItemView {
 	async onOpen() {
 		const root = this.contentEl;
 		root.empty();
-		root.addClass("detexify-panel");
+		root.addClass("lsp-panel");
 
-		const searchRow = root.createDiv({ cls: "detexify-search-row" });
+		const searchRow = root.createDiv({ cls: "lsp-search-row" });
 		this.searchEl = searchRow.createEl("input", {
 			type: "text",
-			cls: "detexify-search-input",
+			cls: "lsp-search-input",
 			attr: { placeholder: "Search command, e.g. \\alpha, int, mathbb…" },
 		});
 		this.registerDomEvent(this.searchEl, "input", () => this.onSearch());
-		const clearBtn = searchRow.createEl("button", { cls: "detexify-clear-btn", text: "Clear" });
+		const clearBtn = searchRow.createEl("button", { cls: "lsp-clear-btn", text: "Clear" });
 		this.registerDomEvent(clearBtn, "click", () => this.clearAll());
 
-		const canvasWrap = root.createDiv({ cls: "detexify-canvas-wrap" });
-		this.canvas = canvasWrap.createEl("canvas", { cls: "detexify-canvas" });
+		const canvasWrap = root.createDiv({ cls: "lsp-canvas-wrap" });
+		this.canvas = canvasWrap.createEl("canvas", { cls: "lsp-canvas" });
 		const ctx = this.canvas.getContext("2d");
-		if (!ctx) throw new Error("Detexify: could not get 2D canvas context");
+		if (!ctx) throw new Error("LaTeX Symbol Picker: could not get 2D canvas context");
 		this.ctx = ctx;
 
 		this.setupCanvasEvents();
 
-		this.statusEl = root.createDiv({ cls: "detexify-status" });
-		this.resultsEl = root.createDiv({ cls: "detexify-results" });
+		this.statusEl = root.createDiv({ cls: "lsp-status" });
+		this.resultsEl = root.createDiv({ cls: "lsp-results" });
 
 		this.registerDomEvent(this.resultsEl, "mousedown", (event) => {
 			const target = event.target as HTMLElement | null;
-			const button = target?.closest<HTMLElement>(".detexify-result");
+			const button = target?.closest<HTMLElement>(".lsp-result");
 			if (!button) return;
 			event.preventDefault();
 			event.stopPropagation();
@@ -314,7 +314,7 @@ class DetexifyView extends ItemView {
 		const style = getComputedStyle(this.canvas);
 		this.drawGrid(cssWidth, cssHeight, style);
 
-		ctx.strokeStyle = style.getPropertyValue("--detexify-ink") || "#cdd6f4";
+		ctx.strokeStyle = style.getPropertyValue("--lsp-ink") || "#cdd6f4";
 		ctx.lineWidth = 3;
 		ctx.lineJoin = "round";
 		ctx.lineCap = "round";
@@ -407,7 +407,7 @@ class DetexifyView extends ItemView {
 		onDone(results.length);
 		if (results.length === 0) return;
 
-		const grid = this.resultsEl.createDiv({ cls: "detexify-grid" });
+		const grid = this.resultsEl.createDiv({ cls: "lsp-grid" });
 		for (const result of results) this.buildTile(grid, result);
 
 		await finishRenderMath();
@@ -415,12 +415,12 @@ class DetexifyView extends ItemView {
 	}
 
 	private buildTile(grid: HTMLElement, result: DisplayResult): void {
-		const button = grid.createEl("button", { cls: "detexify-result" });
+		const button = grid.createEl("button", { cls: "lsp-result" });
 		button.dataset.command = result.command;
 		button.setAttr("aria-label", `${result.command} (${result.packageName})`);
 
-		const preview = button.createDiv({ cls: "detexify-result-preview" });
-		button.createDiv({ cls: "detexify-result-code", text: result.command });
+		const preview = button.createDiv({ cls: "lsp-result-preview" });
+		button.createDiv({ cls: "lsp-result-code", text: result.command });
 
 		try {
 			preview.appendChild(renderMath(result.command, false));
@@ -430,10 +430,10 @@ class DetexifyView extends ItemView {
 	}
 }
 
-class DetexifySettingTab extends PluginSettingTab {
-	private readonly plugin: DetexifyPlugin;
+class LatexSymbolPickerSettingTab extends PluginSettingTab {
+	private readonly plugin: LatexSymbolPickerPlugin;
 
-	constructor(app: App, plugin: DetexifyPlugin) {
+	constructor(app: App, plugin: LatexSymbolPickerPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

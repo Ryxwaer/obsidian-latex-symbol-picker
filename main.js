@@ -25,7 +25,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => DetexifyPlugin
+  default: () => LatexSymbolPickerPlugin
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian2 = require("obsidian");
@@ -374,7 +374,7 @@ function isInsideMath(text, offset) {
 }
 
 // src/main.ts
-var VIEW_TYPE = "detexify-panel-view";
+var VIEW_TYPE = "latex-symbol-picker-view";
 var DEFAULT_STATUS = "Draw a symbol or search above.";
 var DEFAULT_SETTINGS = {
   resultLimit: 12
@@ -382,7 +382,7 @@ var DEFAULT_SETTINGS = {
 function toResult(meta) {
   return { command: meta.command, packageName: meta.package };
 }
-var DetexifyPlugin = class extends import_obsidian2.Plugin {
+var LatexSymbolPickerPlugin = class extends import_obsidian2.Plugin {
   constructor() {
     super(...arguments);
     this.settings = DEFAULT_SETTINGS;
@@ -395,7 +395,7 @@ var DetexifyPlugin = class extends import_obsidian2.Plugin {
     var _a;
     await this.loadSettings();
     this.dataStore = new DataStore(this.app, (_a = this.manifest.dir) != null ? _a : "");
-    this.registerView(VIEW_TYPE, (leaf) => new DetexifyView(leaf, this));
+    this.registerView(VIEW_TYPE, (leaf) => new LatexSymbolPickerView(leaf, this));
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", (leaf) => {
         if ((leaf == null ? void 0 : leaf.view) instanceof import_obsidian2.MarkdownView) {
@@ -411,7 +411,7 @@ var DetexifyPlugin = class extends import_obsidian2.Plugin {
       name: "Open panel",
       callback: () => this.activateView()
     });
-    this.addSettingTab(new DetexifySettingTab(this.app, this));
+    this.addSettingTab(new LatexSymbolPickerSettingTab(this.app, this));
   }
   onunload() {
   }
@@ -493,7 +493,7 @@ var DetexifyPlugin = class extends import_obsidian2.Plugin {
     editor.focus();
   }
 };
-var DetexifyView = class extends import_obsidian2.ItemView {
+var LatexSymbolPickerView = class extends import_obsidian2.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.dpr = 1;
@@ -516,27 +516,27 @@ var DetexifyView = class extends import_obsidian2.ItemView {
   async onOpen() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("detexify-panel");
-    const searchRow = root.createDiv({ cls: "detexify-search-row" });
+    root.addClass("lsp-panel");
+    const searchRow = root.createDiv({ cls: "lsp-search-row" });
     this.searchEl = searchRow.createEl("input", {
       type: "text",
-      cls: "detexify-search-input",
+      cls: "lsp-search-input",
       attr: { placeholder: "Search command, e.g. \\alpha, int, mathbb\u2026" }
     });
     this.registerDomEvent(this.searchEl, "input", () => this.onSearch());
-    const clearBtn = searchRow.createEl("button", { cls: "detexify-clear-btn", text: "Clear" });
+    const clearBtn = searchRow.createEl("button", { cls: "lsp-clear-btn", text: "Clear" });
     this.registerDomEvent(clearBtn, "click", () => this.clearAll());
-    const canvasWrap = root.createDiv({ cls: "detexify-canvas-wrap" });
-    this.canvas = canvasWrap.createEl("canvas", { cls: "detexify-canvas" });
+    const canvasWrap = root.createDiv({ cls: "lsp-canvas-wrap" });
+    this.canvas = canvasWrap.createEl("canvas", { cls: "lsp-canvas" });
     const ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Detexify: could not get 2D canvas context");
+    if (!ctx) throw new Error("LaTeX Symbol Picker: could not get 2D canvas context");
     this.ctx = ctx;
     this.setupCanvasEvents();
-    this.statusEl = root.createDiv({ cls: "detexify-status" });
-    this.resultsEl = root.createDiv({ cls: "detexify-results" });
+    this.statusEl = root.createDiv({ cls: "lsp-status" });
+    this.resultsEl = root.createDiv({ cls: "lsp-results" });
     this.registerDomEvent(this.resultsEl, "mousedown", (event) => {
       const target = event.target;
-      const button = target == null ? void 0 : target.closest(".detexify-result");
+      const button = target == null ? void 0 : target.closest(".lsp-result");
       if (!button) return;
       event.preventDefault();
       event.stopPropagation();
@@ -611,7 +611,7 @@ var DetexifyView = class extends import_obsidian2.ItemView {
     ctx.clearRect(0, 0, cssWidth, cssHeight);
     const style = getComputedStyle(this.canvas);
     this.drawGrid(cssWidth, cssHeight, style);
-    ctx.strokeStyle = style.getPropertyValue("--detexify-ink") || "#cdd6f4";
+    ctx.strokeStyle = style.getPropertyValue("--lsp-ink") || "#cdd6f4";
     ctx.lineWidth = 3;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
@@ -691,17 +691,17 @@ var DetexifyView = class extends import_obsidian2.ItemView {
     this.resultsEl.empty();
     onDone(results.length);
     if (results.length === 0) return;
-    const grid = this.resultsEl.createDiv({ cls: "detexify-grid" });
+    const grid = this.resultsEl.createDiv({ cls: "lsp-grid" });
     for (const result of results) this.buildTile(grid, result);
     await (0, import_obsidian2.finishRenderMath)();
     if (token !== this.renderToken) return;
   }
   buildTile(grid, result) {
-    const button = grid.createEl("button", { cls: "detexify-result" });
+    const button = grid.createEl("button", { cls: "lsp-result" });
     button.dataset.command = result.command;
     button.setAttr("aria-label", `${result.command} (${result.packageName})`);
-    const preview = button.createDiv({ cls: "detexify-result-preview" });
-    button.createDiv({ cls: "detexify-result-code", text: result.command });
+    const preview = button.createDiv({ cls: "lsp-result-preview" });
+    button.createDiv({ cls: "lsp-result-code", text: result.command });
     try {
       preview.appendChild((0, import_obsidian2.renderMath)(result.command, false));
     } catch (error) {
@@ -709,7 +709,7 @@ var DetexifyView = class extends import_obsidian2.ItemView {
     }
   }
 };
-var DetexifySettingTab = class extends import_obsidian2.PluginSettingTab {
+var LatexSymbolPickerSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;

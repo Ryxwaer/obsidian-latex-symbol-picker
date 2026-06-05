@@ -1,4 +1,4 @@
-.detexify-panel {
+.lsp-panel {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
@@ -7,23 +7,23 @@
 	overflow-y: auto;
 }
 
-.detexify-search-row {
+.lsp-search-row {
 	display: flex;
 	gap: 6px;
 	align-items: center;
 }
 
-.detexify-search-input {
+.lsp-search-input {
 	flex: 1;
 	min-width: 0;
 }
 
-.detexify-clear-btn {
+.lsp-clear-btn {
 	flex: 0 0 auto;
 	cursor: pointer;
 }
 
-.detexify-canvas-wrap {
+.lsp-canvas-wrap {
 	position: relative;
 	width: 100%;
 	border: 1px solid var(--background-modifier-border);
@@ -33,10 +33,10 @@
 	user-select: none;
 	-webkit-user-select: none;
 	/* Color used by the canvas drawing context. */
-	--detexify-ink: var(--text-normal);
+	--lsp-ink: var(--text-normal);
 }
 
-.detexify-canvas {
+.lsp-canvas {
 	display: block;
 	width: 100%;
 	height: 190px;
@@ -47,24 +47,24 @@
 	outline: none;
 }
 
-.detexify-status {
+.lsp-status {
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	min-height: 1.2em;
 }
 
-.detexify-results {
+.lsp-results {
 	flex: 1;
 }
 
-.detexify-grid {
+.lsp-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
 	gap: 6px;
 	align-items: start;
 }
 
-.detexify-result {
+.lsp-result {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -80,12 +80,12 @@
 	overflow: hidden;
 }
 
-.detexify-result:hover {
+.lsp-result:hover {
 	background-color: var(--background-modifier-hover);
 	border-color: var(--interactive-accent);
 }
 
-.detexify-result-preview {
+.lsp-result-preview {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -99,21 +99,21 @@
 }
 
 /* Hide the preview slot entirely when nothing rendered into it. */
-.detexify-result-preview:empty {
+.lsp-result-preview:empty {
 	display: none;
 }
 
-.detexify-result-preview .math {
+.lsp-result-preview .math {
 	display: inline-block;
 }
 
 /* Keep oversized symbols clipped inside the tile instead of spilling out. */
-.detexify-result-preview .MathJax {
+.lsp-result-preview .MathJax {
 	max-width: 100%;
 	overflow: hidden;
 }
 
-.detexify-result-code {
+.lsp-result-code {
 	font-family: var(--font-monospace);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
