@@ -25,7 +25,7 @@ require("mathjax-full/js/input/tex/noundefined/NoUndefinedConfiguration.js");
 const SYMBOLS_URL = "https://detexify.kirelabs.org/data/symbols.json";
 const SNAPSHOT_URL = "https://detexify.kirelabs.org/data/snapshot.json";
 const OUT_DIR = path.join(__dirname, "..", "data");
-const COORD_DECIMALS = 4;
+const COORD_DECIMALS = 2;
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -82,15 +82,17 @@ async function main() {
 	const keptSymbols = symbols.filter((s) => renderableCommands.has(s.command));
 	const keptIds = new Set(keptSymbols.map((s) => s.legacyId));
 
+	// Compact layout (id -> samples -> strokes -> points -> [x, y]) keeps the
+	// bundled main.js small; src/data.ts inflates it back at load time.
 	const strippedSnapshot = {};
 	let keptSamples = 0;
 	for (const [id, samples] of Object.entries(snapshot)) {
 		if (!keptIds.has(id)) continue;
-		strippedSnapshot[id] = samples.map((sample) => ({
-			strokes: sample.strokes.map((stroke) =>
-				stroke.map((point) => ({ x: round(point.x), y: round(point.y) }))
-			),
-		}));
+		strippedSnapshot[id] = samples.map((sample) =>
+			sample.strokes.map((stroke) =>
+				stroke.map((point) => [round(point.x), round(point.y)])
+			)
+		);
 		keptSamples += samples.length;
 	}
 

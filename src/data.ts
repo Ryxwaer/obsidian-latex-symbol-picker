@@ -3,6 +3,13 @@ import snapshotData from "../data/snapshot.json";
 import synonymsData from "../synonyms.json";
 import type { Snapshot, SymbolMeta } from "./classifier";
 
+/**
+ * Bundled snapshot is stored compactly to keep main.js small: each point is a
+ * `[x, y]` pair and each sample is just its array of strokes. We inflate it to
+ * the classifier's `{ strokes: { x, y }[][] }` shape once at load time.
+ */
+type CompactSnapshot = Record<string, number[][][][]>;
+
 export interface ClassifierData {
 	snapshot: Snapshot;
 	symbols: SymbolMeta[];
@@ -40,9 +47,19 @@ function indexSynonyms(): Map<string, string[]> {
 	return map;
 }
 
+function inflateSnapshot(raw: CompactSnapshot): Snapshot {
+	const snapshot: Snapshot = {};
+	for (const id of Object.keys(raw)) {
+		snapshot[id] = raw[id].map((strokes) => ({
+			strokes: strokes.map((stroke) => stroke.map(([x, y]) => ({ x, y }))),
+		}));
+	}
+	return snapshot;
+}
+
 export function loadClassifierData(): ClassifierData {
 	const symbols = symbolsData as SymbolMeta[];
-	const snapshot = snapshotData as Snapshot;
+	const snapshot = inflateSnapshot(snapshotData as CompactSnapshot);
 	return {
 		symbols,
 		snapshot,
