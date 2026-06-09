@@ -8,6 +8,7 @@ import {
 	Setting,
 	WorkspaceLeaf,
 	finishRenderMath,
+	loadMathJax,
 	renderMath,
 } from "obsidian";
 import { DetexifyClassifier, Stroke, SymbolMeta } from "./classifier";
@@ -405,6 +406,9 @@ class LatexSymbolPickerView extends ItemView {
 		this.resultsEl.empty();
 		onDone(results.length);
 		if (results.length === 0) return;
+
+		await loadMathJax();
+		if (token !== this.renderToken) return;
 
 		const grid = this.resultsEl.createDiv({ cls: "lsp-grid" });
 		for (const result of results) this.buildTile(grid, result);

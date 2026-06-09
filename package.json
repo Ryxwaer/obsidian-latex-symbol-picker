@@ -1,6 +1,6 @@
 {
   "name": "latex-symbol-picker",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Obsidian side panel to draw or search a LaTeX symbol and insert it at the cursor.",
   "main": "main.js",
   "scripts": {
