@@ -11,7 +11,7 @@ import {
 	renderMath,
 } from "obsidian";
 import { DetexifyClassifier, Stroke, SymbolMeta } from "./classifier";
-import { ClassifierData, DataStore } from "./data";
+import { ClassifierData, loadClassifierData } from "./data";
 import { isInsideMath } from "./mathContext";
 
 const VIEW_TYPE = "latex-symbol-picker-view";
@@ -36,16 +36,12 @@ function toResult(meta: SymbolMeta): DisplayResult {
 
 export default class LatexSymbolPickerPlugin extends Plugin {
 	settings: LatexSymbolPickerSettings = DEFAULT_SETTINGS;
-	dataStore!: DataStore;
 	classifier: DetexifyClassifier | null = null;
 	data: ClassifierData | null = null;
 	lastActiveMarkdownView: MarkdownView | null = null;
 
-	private loadPromise: Promise<void> | null = null;
-
 	async onload() {
 		await this.loadSettings();
-		this.dataStore = new DataStore(this.app, this.manifest.dir ?? "");
 
 		this.registerView(VIEW_TYPE, (leaf) => new LatexSymbolPickerView(leaf, this));
 
@@ -94,21 +90,11 @@ export default class LatexSymbolPickerPlugin extends Plugin {
 		if (leaf) await workspace.revealLeaf(leaf);
 	}
 
-	ensureClassifier(): Promise<void> {
-		if (this.classifier) return Promise.resolve();
-		if (!this.loadPromise) {
-			this.loadPromise = this.dataStore
-				.load()
-				.then((data) => {
-					this.data = data;
-					this.classifier = new DetexifyClassifier(data.snapshot);
-				})
-				.catch((error) => {
-					this.loadPromise = null;
-					throw error;
-				});
-		}
-		return this.loadPromise;
+	ensureClassifier(): void {
+		if (this.classifier) return;
+		const data = loadClassifierData();
+		this.data = data;
+		this.classifier = new DetexifyClassifier(data.snapshot);
 	}
 
 	classify(strokes: Stroke[]): DisplayResult[] {
@@ -122,15 +108,26 @@ export default class LatexSymbolPickerPlugin extends Plugin {
 
 	search(query: string, limit = 80): DisplayResult[] {
 		const needle = query.toLowerCase();
+		const symbols = this.data?.symbols ?? [];
+		const synonyms = this.data?.synonymsByCommand;
 		const seen = new Set<string>();
 		const results: DisplayResult[] = [];
-		for (const meta of this.data?.symbols ?? []) {
-			if (seen.has(meta.command)) continue;
-			if (!`${meta.command} ${meta.package}`.toLowerCase().includes(needle)) continue;
-			seen.add(meta.command);
-			results.push(toResult(meta));
-			if (results.length >= limit) break;
-		}
+
+		const collect = (matches: (meta: SymbolMeta) => boolean) => {
+			for (const meta of symbols) {
+				if (results.length >= limit) break;
+				if (seen.has(meta.command)) continue;
+				if (!matches(meta)) continue;
+				seen.add(meta.command);
+				results.push(toResult(meta));
+			}
+		};
+
+		collect((meta) => `${meta.command} ${meta.package}`.toLowerCase().includes(needle));
+		collect((meta) =>
+			(synonyms?.get(meta.command) ?? []).some((keyword) => keyword.includes(needle))
+		);
+
 		return results;
 	}
 
@@ -241,13 +238,15 @@ class LatexSymbolPickerView extends ItemView {
 		this.resizeCanvas();
 
 		this.setStatus("Loading…");
-		try {
-			await this.plugin.ensureClassifier();
-			this.setStatus(DEFAULT_STATUS);
-		} catch (error) {
-			console.error(error);
-			this.setStatus("Failed to load classifier data. Try reinstalling the plugin.");
-		}
+		window.setTimeout(() => {
+			try {
+				this.plugin.ensureClassifier();
+				this.setStatus(DEFAULT_STATUS);
+			} catch (error) {
+				console.error(error);
+				this.setStatus("Failed to load symbol data. Try reinstalling the plugin.");
+			}
+		}, 0);
 	}
 
 	async onClose() {
