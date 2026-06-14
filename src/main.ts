@@ -20,11 +20,19 @@ const DEFAULT_STATUS = "Draw a symbol or search above.";
 
 interface LatexSymbolPickerSettings {
 	resultLimit: number;
+	historyLimit: number;
 }
 
 const DEFAULT_SETTINGS: LatexSymbolPickerSettings = {
 	resultLimit: 12,
+	historyLimit: 12,
 };
+
+const RESULT_LIMITS = { min: 4, max: 24, step: 1 };
+
+interface PersistedData extends LatexSymbolPickerSettings {
+	history: string[];
+}
 
 interface DisplayResult {
 	command: string;
@@ -37,6 +45,7 @@ function toResult(meta: SymbolMeta): DisplayResult {
 
 export default class LatexSymbolPickerPlugin extends Plugin {
 	settings: LatexSymbolPickerSettings = DEFAULT_SETTINGS;
+	history: string[] = [];
 	classifier: DetexifyClassifier | null = null;
 	data: ClassifierData | null = null;
 	lastActiveMarkdownView: MarkdownView | null = null;
@@ -70,12 +79,38 @@ export default class LatexSymbolPickerPlugin extends Plugin {
 	onunload() {}
 
 	async loadSettings() {
-		const stored = (await this.loadData()) as Partial<LatexSymbolPickerSettings> | null;
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, stored ?? {});
+		const stored = (await this.loadData()) as Partial<PersistedData> | null;
+		this.settings = {
+			resultLimit: stored?.resultLimit ?? DEFAULT_SETTINGS.resultLimit,
+			historyLimit: stored?.historyLimit ?? DEFAULT_SETTINGS.historyLimit,
+		};
+		this.history = Array.isArray(stored?.history) ? stored.history : [];
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
+		const data: PersistedData = { ...this.settings, history: this.history };
+		await this.saveData(data);
+	}
+
+	async recordHistory(command: string) {
+		this.history = [command, ...this.history.filter((c) => c !== command)].slice(
+			0,
+			RESULT_LIMITS.max
+		);
+		await this.saveSettings();
+		this.refreshHistoryViews();
+	}
+
+	async clearHistory() {
+		this.history = [];
+		await this.saveSettings();
+		this.refreshHistoryViews();
+	}
+
+	refreshHistoryViews() {
+		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+			if (leaf.view instanceof LatexSymbolPickerView) void leaf.view.renderHistory();
+		}
 	}
 
 	async activateView() {
@@ -160,6 +195,8 @@ export default class LatexSymbolPickerPlugin extends Plugin {
 		const start = editor.posToOffset(editor.getCursor()) - text.length;
 		editor.setCursor(editor.offsetToPos(start + caret));
 		editor.focus();
+
+		void this.recordHistory(command);
 	}
 }
 
@@ -177,9 +214,11 @@ class LatexSymbolPickerView extends ItemView {
 	private statusEl!: HTMLElement;
 	private resultsEl!: HTMLElement;
 	private searchEl!: HTMLInputElement;
+	private historyEl!: HTMLElement;
 
 	private resizeObserver: ResizeObserver | null = null;
 	private renderToken = 0;
+	private historyToken = 0;
 
 	constructor(leaf: WorkspaceLeaf, plugin: LatexSymbolPickerPlugin) {
 		super(leaf);
@@ -223,8 +262,9 @@ class LatexSymbolPickerView extends ItemView {
 
 		this.statusEl = root.createDiv({ cls: "lsp-status" });
 		this.resultsEl = root.createDiv({ cls: "lsp-results" });
+		this.historyEl = root.createDiv({ cls: "lsp-history" });
 
-		this.registerDomEvent(this.resultsEl, "mousedown", (event) => {
+		const insertFromClick = (event: MouseEvent) => {
 			const target = event.target as HTMLElement | null;
 			const button = target?.closest<HTMLElement>(".lsp-result");
 			if (!button) return;
@@ -232,7 +272,9 @@ class LatexSymbolPickerView extends ItemView {
 			event.stopPropagation();
 			const command = button.dataset.command;
 			if (command) this.plugin.insertSymbol(command);
-		});
+		};
+		this.registerDomEvent(this.resultsEl, "mousedown", insertFromClick);
+		this.registerDomEvent(this.historyEl, "mousedown", insertFromClick);
 
 		this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
 		this.resizeObserver.observe(canvasWrap);
@@ -243,6 +285,7 @@ class LatexSymbolPickerView extends ItemView {
 			try {
 				this.plugin.ensureClassifier();
 				this.setStatus(DEFAULT_STATUS);
+				void this.renderHistory();
 			} catch (error) {
 				console.error(error);
 				this.setStatus("Failed to load symbol data. Try reinstalling the plugin.");
@@ -417,10 +460,29 @@ class LatexSymbolPickerView extends ItemView {
 		if (token !== this.renderToken) return;
 	}
 
+	async renderHistory(): Promise<void> {
+		const token = ++this.historyToken;
+		this.historyEl.empty();
+
+		const commands = this.plugin.history.slice(0, this.plugin.settings.historyLimit);
+		if (commands.length === 0) return;
+
+		this.historyEl.createDiv({ cls: "lsp-history-label", text: "Recent" });
+		const grid = this.historyEl.createDiv({ cls: "lsp-grid" });
+
+		await loadMathJax();
+		if (token !== this.historyToken) return;
+		for (const command of commands) this.buildTile(grid, { command, packageName: "" });
+		await finishRenderMath();
+	}
+
 	private buildTile(grid: HTMLElement, result: DisplayResult): void {
 		const button = grid.createEl("button", { cls: "lsp-result" });
 		button.dataset.command = result.command;
-		button.setAttr("aria-label", `${result.command} (${result.packageName})`);
+		button.setAttr(
+			"aria-label",
+			result.packageName ? `${result.command} (${result.packageName})` : result.command
+		);
 
 		const preview = button.createDiv({ cls: "lsp-result-preview" });
 		button.createDiv({ cls: "lsp-result-code", text: result.command });
@@ -450,12 +512,39 @@ class LatexSymbolPickerSettingTab extends PluginSettingTab {
 			.setDesc("How many matches to show after drawing a symbol.")
 			.addSlider((slider) =>
 				slider
-					.setLimits(4, 24, 1)
+					.setLimits(RESULT_LIMITS.min, RESULT_LIMITS.max, RESULT_LIMITS.step)
 					.setValue(this.plugin.settings.resultLimit)
 					.setDynamicTooltip()
 					.onChange(async (value) => {
 						this.plugin.settings.resultLimit = value;
 						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Number of recent symbols")
+			.setDesc("How many recently inserted symbols to keep at the bottom of the panel.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(RESULT_LIMITS.min, RESULT_LIMITS.max, RESULT_LIMITS.step)
+					.setValue(this.plugin.settings.historyLimit)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.historyLimit = value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshHistoryViews();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Recent symbols history")
+			.setDesc("Remove all recently inserted symbols from the panel.")
+			.addButton((button) =>
+				button
+					.setButtonText("Clear history")
+					.onClick(async () => {
+						await this.plugin.clearHistory();
+						new Notice("Recent symbols cleared.");
 					})
 			);
 	}

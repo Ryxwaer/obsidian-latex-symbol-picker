@@ -6,9 +6,10 @@ An Obsidian side panel to find LaTeX symbols and quickly insert them at your cur
 
 ## Features
 
-- **Draw symbols** with mouse, finger, or stylus to find them by shape (inspired by Detexify.
+- **Draw symbols** with mouse, finger, or stylus to find them by shape (inspired by Detexify).
 - **Search by name** using common synonyms, so you can find a symbol even without knowing LaTeX.
 - **Click to insert** a symbol at the cursor, auto-wrapped in `$...$` when you are not already inside a math context.
+- **History of picked symbols** is tracked and recent symbols are available at the bottom of panel for quick reuse.
 - **Fully offline**: the classifier and its training data ship with the plugin. Only symbols that Obsidian's MathJax can render are included.
 
 ## Usage

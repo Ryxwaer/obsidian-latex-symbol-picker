@@ -64,6 +64,21 @@
 	align-items: start;
 }
 
+.lsp-history {
+	flex: 0 0 auto;
+}
+
+.lsp-history:not(:empty) {
+	border-top: 1px solid var(--background-modifier-border);
+	padding-top: 8px;
+}
+
+.lsp-history-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin-bottom: 6px;
+}
+
 .lsp-result {
 	display: flex;
 	flex-direction: column;

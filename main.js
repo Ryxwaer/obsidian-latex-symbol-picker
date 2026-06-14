@@ -489,8 +489,10 @@ function isInsideMath(text, offset) {
 var VIEW_TYPE = "latex-symbol-picker-view";
 var DEFAULT_STATUS = "Draw a symbol or search above.";
 var DEFAULT_SETTINGS = {
-  resultLimit: 12
+  resultLimit: 12,
+  historyLimit: 12
 };
+var RESULT_LIMITS = { min: 4, max: 24, step: 1 };
 function toResult(meta) {
   return { command: meta.command, packageName: meta.package };
 }
@@ -498,6 +500,7 @@ var LatexSymbolPickerPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
     this.settings = DEFAULT_SETTINGS;
+    this.history = [];
     this.classifier = null;
     this.data = null;
     this.lastActiveMarkdownView = null;
@@ -525,11 +528,35 @@ var LatexSymbolPickerPlugin = class extends import_obsidian.Plugin {
   onunload() {
   }
   async loadSettings() {
+    var _a, _b;
     const stored = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, stored != null ? stored : {});
+    this.settings = {
+      resultLimit: (_a = stored == null ? void 0 : stored.resultLimit) != null ? _a : DEFAULT_SETTINGS.resultLimit,
+      historyLimit: (_b = stored == null ? void 0 : stored.historyLimit) != null ? _b : DEFAULT_SETTINGS.historyLimit
+    };
+    this.history = Array.isArray(stored == null ? void 0 : stored.history) ? stored.history : [];
   }
   async saveSettings() {
-    await this.saveData(this.settings);
+    const data = { ...this.settings, history: this.history };
+    await this.saveData(data);
+  }
+  async recordHistory(command) {
+    this.history = [command, ...this.history.filter((c) => c !== command)].slice(
+      0,
+      RESULT_LIMITS.max
+    );
+    await this.saveSettings();
+    this.refreshHistoryViews();
+  }
+  async clearHistory() {
+    this.history = [];
+    await this.saveSettings();
+    this.refreshHistoryViews();
+  }
+  refreshHistoryViews() {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+      if (leaf.view instanceof LatexSymbolPickerView) void leaf.view.renderHistory();
+    }
   }
   async activateView() {
     const { workspace } = this.app;
@@ -604,6 +631,7 @@ var LatexSymbolPickerPlugin = class extends import_obsidian.Plugin {
     const start = editor.posToOffset(editor.getCursor()) - text.length;
     editor.setCursor(editor.offsetToPos(start + caret));
     editor.focus();
+    void this.recordHistory(command);
   }
 };
 var LatexSymbolPickerView = class extends import_obsidian.ItemView {
@@ -615,6 +643,7 @@ var LatexSymbolPickerView = class extends import_obsidian.ItemView {
     this.activePointer = null;
     this.resizeObserver = null;
     this.renderToken = 0;
+    this.historyToken = 0;
     this.plugin = plugin;
   }
   getViewType() {
@@ -647,7 +676,8 @@ var LatexSymbolPickerView = class extends import_obsidian.ItemView {
     this.setupCanvasEvents();
     this.statusEl = root.createDiv({ cls: "lsp-status" });
     this.resultsEl = root.createDiv({ cls: "lsp-results" });
-    this.registerDomEvent(this.resultsEl, "mousedown", (event) => {
+    this.historyEl = root.createDiv({ cls: "lsp-history" });
+    const insertFromClick = (event) => {
       const target = event.target;
       const button = target == null ? void 0 : target.closest(".lsp-result");
       if (!button) return;
@@ -655,7 +685,9 @@ var LatexSymbolPickerView = class extends import_obsidian.ItemView {
       event.stopPropagation();
       const command = button.dataset.command;
       if (command) this.plugin.insertSymbol(command);
-    });
+    };
+    this.registerDomEvent(this.resultsEl, "mousedown", insertFromClick);
+    this.registerDomEvent(this.historyEl, "mousedown", insertFromClick);
     this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
     this.resizeObserver.observe(canvasWrap);
     this.resizeCanvas();
@@ -664,6 +696,7 @@ var LatexSymbolPickerView = class extends import_obsidian.ItemView {
       try {
         this.plugin.ensureClassifier();
         this.setStatus(DEFAULT_STATUS);
+        void this.renderHistory();
       } catch (error) {
         console.error(error);
         this.setStatus("Failed to load symbol data. Try reinstalling the plugin.");
@@ -813,10 +846,25 @@ var LatexSymbolPickerView = class extends import_obsidian.ItemView {
     await (0, import_obsidian.finishRenderMath)();
     if (token !== this.renderToken) return;
   }
+  async renderHistory() {
+    const token = ++this.historyToken;
+    this.historyEl.empty();
+    const commands = this.plugin.history.slice(0, this.plugin.settings.historyLimit);
+    if (commands.length === 0) return;
+    this.historyEl.createDiv({ cls: "lsp-history-label", text: "Recent" });
+    const grid = this.historyEl.createDiv({ cls: "lsp-grid" });
+    await (0, import_obsidian.loadMathJax)();
+    if (token !== this.historyToken) return;
+    for (const command of commands) this.buildTile(grid, { command, packageName: "" });
+    await (0, import_obsidian.finishRenderMath)();
+  }
   buildTile(grid, result) {
     const button = grid.createEl("button", { cls: "lsp-result" });
     button.dataset.command = result.command;
-    button.setAttr("aria-label", `${result.command} (${result.packageName})`);
+    button.setAttr(
+      "aria-label",
+      result.packageName ? `${result.command} (${result.packageName})` : result.command
+    );
     const preview = button.createDiv({ cls: "lsp-result-preview" });
     button.createDiv({ cls: "lsp-result-code", text: result.command });
     try {
@@ -835,9 +883,22 @@ var LatexSymbolPickerSettingTab = class extends import_obsidian.PluginSettingTab
     const { containerEl } = this;
     containerEl.empty();
     new import_obsidian.Setting(containerEl).setName("Number of draw results").setDesc("How many matches to show after drawing a symbol.").addSlider(
-      (slider) => slider.setLimits(4, 24, 1).setValue(this.plugin.settings.resultLimit).setDynamicTooltip().onChange(async (value) => {
+      (slider) => slider.setLimits(RESULT_LIMITS.min, RESULT_LIMITS.max, RESULT_LIMITS.step).setValue(this.plugin.settings.resultLimit).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.resultLimit = value;
         await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Number of recent symbols").setDesc("How many recently inserted symbols to keep at the bottom of the panel.").addSlider(
+      (slider) => slider.setLimits(RESULT_LIMITS.min, RESULT_LIMITS.max, RESULT_LIMITS.step).setValue(this.plugin.settings.historyLimit).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.historyLimit = value;
+        await this.plugin.saveSettings();
+        this.plugin.refreshHistoryViews();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Recent symbols history").setDesc("Remove all recently inserted symbols from the panel.").addButton(
+      (button) => button.setButtonText("Clear history").onClick(async () => {
+        await this.plugin.clearHistory();
+        new import_obsidian.Notice("Recent symbols cleared.");
       })
     );
   }

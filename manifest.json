@@ -1,7 +1,7 @@
 {
 	"id": "latex-symbol-picker",
 	"name": "LaTeX Symbol Picker",
-	"version": "1.2.2",
+	"version": "1.3.0",
 	"minAppVersion": "1.7.2",
 	"description": "Draw or search a LaTeX symbol in a side panel and insert it at the cursor, auto-wrapping in math delimiters when needed. Powered by a Detexify-style handwriting classifier.",
 	"author": "ryxwaer",
